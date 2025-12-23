@@ -1,43 +1,87 @@
-# AquaFlow – Rural Water O&M Copilot
+# AquaFlow – Rural Water O&M Copilot 🚰⚡
 
-> Empowering Gram Panchayats with low-cost, real-time leak detection and water quality monitoring tools (Problem Statement ID: 25241, Ministry of Jal Shakti).
+> Empowering Gram Panchayats with low-cost, real-time leak detection and water quality monitoring tools. (Problem Statement ID: 25241, Ministry of Jal Shakti)
 
 ![Hero Placeholder](docs/images/hero-placeholder.png)
 
-## Why This Matters
-Rural piped water schemes often struggle with leak visibility, delayed repairs, and sparse water-quality data. AquaFlow pairs a simulation-driven sensor twin with a live web dashboard to give Panchayats simple, actionable insights for daily operations and maintenance.
+---
 
-## Problem Statement (Summary)
-- **Challenge**: Empower Gram Panchayats to manage daily O&M of rural piped water supply using low-cost digital tools.
-- **Needs**: Easy tracking of infrastructure, early leak detection, data-led decisions, community accountability.
-- **Expected Outcomes**: Simple rural-ready tools for routine checks (pump hours, valve status, leaks, water quality), predictive insights from flow patterns, digital water-quality logs, and empowered local ownership.
-- **Origin**: Ministry of Jal Shakti (Swachh Bharat Mission Gramin, DDWS) — Clean & Green Technology theme.
+## Table of Contents
+- Overview
+- Problem Statement
+- Highlights
+- Leak Detection Logic
+- Architecture
+- Data Model (Firebase)
+- Setup (Local)
+- Usage Guide
+- Operations Runbook
+- Roadmap
+- Screens & Media
+- License
+- Credits
 
-## Core Features
-- Real-time leak detection and alerting with mechanic auto-assignment.
-- Dual dashboards: **Admin** (oversight, assignments, history) and **Mechanic** (my tasks, acknowledgements).
-- Live sensor twin: water level, pH, turbidity, salinity, flow, valve/tap states.
-- Tkinter simulation app to model the network and push live data to Firebase.
-- Server-Sent Events (SSE) for instant dashboard updates.
-- Offline-safe simulation with mock Firebase fallback.
-- Extensible roadmap for deployment (container/WSGI ready) and media (screens, demos).
+---
 
-## How Leak Detection Works (Step-by-Step Logic)
-Each pipe segment is bounded by sensor nodes (circles in the simulation). To localize a leak:
-1. **Isolate upstream**: Treat node `A` as the source, close valve at node `B`. Any detected loss between `A` and `B` signals a leak in that segment.
-2. **Narrow further**: Now close `C` (next node) while `B` is blocked. If loss persists between `B` and `C`, the leak lies there. Otherwise proceed downstream.
-3. **Iterate to the end**: Continue hop-by-hop isolation until the terminal node. Each isolation window updates active leak flags in Firebase.
-4. **Assign and notify**: Detected leaks are auto-assigned round-robin to mechanics; dashboard alerts show pipe name, severity, assignee, and status.
-5. **Resolve**: When the segment shows no loss, alerts auto-resolve and assignments clear.
+## Overview
+AquaFlow pairs a simulation-driven sensor twin (Tkinter) with a live Flask dashboard to give Panchayats simple, actionable insight into rural piped water networks. It surfaces leaks, assigns mechanics automatically, streams real-time sensor data, and keeps admins in control with clear, role-based dashboards.
 
-## Architecture at a Glance
-- **simulation/tkinder.py**: Tkinter-based network simulator; pushes valves, taps, sensors, leaks, and water flow to Firebase. Works online (serviceAccountKey*.json) or offline (mock Firebase).
-- **water-monitoring-dashboard/app.py**: Flask + Flask-Login web app with SSE streams, role-based dashboards, mechanic assignment, alert history, and simulated leak endpoints for testing.
-- **Firebase (RTDB)**: Single source of truth for `/water_system` data (valves, taps, sensors, active_leaks, water_level, water_flow, alerts).
+## Problem Statement (Ministry of Jal Shakti)
+- **Title**: Empowering Gram Panchayats to manage daily O&M of Rural Piped Water Supply Systems using low-cost digital tools for routine monitoring.
+- **Gaps**: Delayed repairs, undetected leakages, limited water-quality visibility, and low tooling for routine O&M.
+- **Expected Outcomes**:
+	- Rural-ready digital tools for routine checks (pump hours, valve status, leaks, water quality).
+	- Predictive insights from flow patterns for early fault detection.
+	- Digital water-quality logs; community accountability and ownership.
 
-## Quickstart (Local, Windows)
+## Highlights
+- 🔴 Real-time leak alerts with auto mechanic assignment and history.
+- 🎛️ Dual dashboards: **Admin** (oversight, assignments, history) and **Mechanic** (my tasks, acknowledgements).
+- 🌊 Sensor twin: water level, pH, turbidity, salinity, flow, valve/tap states.
+- 🔄 SSE-driven updates for instant dashboard refresh.
+- 🧪 Tkinter simulation to model the network, inject leaks, and push data to Firebase.
+- 🛡️ Offline-safe simulation via mock Firebase when keys are absent.
+
+## Leak Detection Logic (Segment Isolation)
+```
+Source A ---- B ---- C ---- D
+				 [1] close B, check A-B segment
+				 [2] close C (B closed), check B-C segment
+				 [3] close D (B,C closed), check C-D segment
+```
+Step-by-step:
+1) **Isolate upstream**: Treat `A` as source, close at `B`. Loss between `A` and `B` → leak in that span.
+2) **Narrow further**: Close `C` while `B` stays blocked. If loss persists, leak is between `B` and `C`.
+3) **Iterate**: Continue hop-by-hop until the terminal node; each isolation updates `active_leaks` in Firebase.
+4) **Assign**: Round-robin mechanic assignment with workload balancing; alerts carry pipe name, severity, assignee, status.
+5) **Resolve**: When flow loss clears, alerts auto-resolve and assignments are released.
+
+## Architecture
+- **simulation/tkinder.py** — Tkinter network simulator; pushes valves, taps, sensors, leaks, water_flow, water_level to Firebase. Uses serviceAccountKey*.json or mock offline Firebase.
+- **water-monitoring-dashboard/app.py** — Flask + Flask-Login + SSE; admin/mechanic dashboards, alert history, leak simulation API, assignments.
+- **Firebase RTDB** — `/water_system` is the single source of truth for state and alerts.
+
+### High-Level Flow
+```
+[Tkinter Simulation] --(Firebase Admin SDK)--> [Firebase RTDB] --(SSE/REST)--> [Flask Dashboard]
+					 ^                                               |
+					 |-----------------------------------------------|
+								 (read-back for live state & alerts)
+```
+
+## Data Model (Firebase RTDB)
+- `/water_system/valves` — `{TANK_VALVE: 0/1, VALVE_A: 0/1}`
+- `/water_system/taps` — tap states 0/1
+- `/water_system/sensors` — `{pH, turbidity, salinity, flow}`
+- `/water_system/water_level` — percent int
+- `/water_system/leaks` — configured leaks 0/1
+- `/water_system/active_leaks` — computed active leaks 0/1 (flow present)
+- `/water_system/water_flow` — per-pipe flow flags
+- `/water_system/leak_report` — summary payload for active/inactive leaks
+
+## Setup (Local, Windows)
 ```powershell
-# 1) Clone and enter
+# 1) Clone
 # git clone <your-fork-url>
 cd "water-sim 4/water-sim"
 
@@ -46,13 +90,13 @@ python -m venv .venv
 . .\.venv\Scripts\Activate.ps1
 
 # 3) Install deps (root + dashboard)
-pip install -r requirements.txt
+
 pip install -r water-monitoring-dashboard/requirements.txt
 
-# 4) Place Firebase service account key
-# Put serviceAccountKey.json at project root (already present) or adjust FIREBASE_DB_URL
+# 4) Firebase key
+# Place serviceAccountKey.json at project root (already present) or set FIREBASE_DB_URL
 
-# 5) Run simulation (Tkinter GUI)
+# 5) Run simulation (Tkinter)
 cd simulation
 python tkinder.py
 
@@ -62,40 +106,39 @@ python app.py
 ```
 
 ### Environment
-- `FIREBASE_DB_URL` (optional): Override the default RTDB URL.
-- `SECRET_KEY` (optional): Flask secret key.
+| Name | Purpose |
+| ---- | ------- |
+| FIREBASE_DB_URL | Override default RTDB URL (optional) |
+| SECRET_KEY | Flask secret key (optional) |
 
 ### Logins
-- **Admin**: `admin` / `WaterMonitor2024!`
-- **Mechanics**: `M001`/`mechanic001`, `M002`/`mechanic002`, `M003`/`mechanic003`
+- Admin: `admin` / `WaterMonitor2024!`
+- Mechanics: `M001`/`mechanic001`, `M002`/`mechanic002`, `M003`/`mechanic003`
 
-## Usage Flow
-1. Launch Tkinter simulation → adjust valves, taps, water level, and add/remove leaks on pipes.
-2. Data syncs to Firebase (or mock offline fallback); active leaks flagged.
-3. Flask dashboard streams updates via SSE → shows system state, alerts, and assignments.
-4. Mechanics log in, view assigned leaks, acknowledge, and resolve; admin can reassign or resolve all.
+## Usage Guide
+1) Launch Tkinter simulation → adjust valves, taps, water level; add/remove leaks on pipes.
+2) State syncs to Firebase (or mock offline); `active_leaks` computed and published.
+3) Flask dashboard streams updates via SSE → system state, alerts, assignments.
+4) Mechanics log in to view/ack/resolve; admin can reassign or resolve all.
 
-## Tech Stack
-- Python, Flask, Flask-Login, gevent (SSE), Firebase Admin SDK, Tkinter
-- Frontend: HTML/CSS/JS (dashboard), SSE for realtime
-
-## Project Structure
-- `simulation/tkinder.py` — network simulator + Firebase sync
-- `water-monitoring-dashboard/app.py` — Flask app (admin + mechanic dashboards)
-- `water-monitoring-dashboard/static/` — CSS/JS assets
-- `water-monitoring-dashboard/templates/` — Jinja2 templates
-
-## Screenshots & Demo (Placeholders)
-- Dashboard Overview: `docs/images/dashboard.png`
-- Alert & Assignment Flow: `docs/images/alerts.png`
-- Simulation Canvas: `docs/images/simulation.png`
-- Demo Video: `docs/videos/demo.mp4`
+## Operations Runbook
+- **Start simulation**: `python simulation/tkinder.py`
+- **Start dashboard**: `python water-monitoring-dashboard/app.py`
+- **Firebase key**: Keep `serviceAccountKey.json` at repo root (sim) and `/water-monitoring-dashboard` (dashboard already finds root copy).
+- **Troubleshoot Firebase**: If offline, the simulator drops to mock Firebase; dashboard requires a real key for RTDB.
+- **Ports**: Dashboard default `5050`; update `PORT` env to override.
 
 ## Roadmap
 - Containerized deployment (Gunicorn/WSGI + reverse proxy)
 - Mobile-friendly mechanic interface
 - Predictive leak scoring from flow anomalies
-- Image/video capture of field repairs
+- Image/video capture for field repairs
+
+## Screens & Media (placeholders)
+- docs/images/dashboard.png — Dashboard overview
+- docs/images/alerts.png — Alert & assignment flow
+- docs/images/simulation.png — Simulation canvas
+- docs/videos/demo.mp4 — Demo walk-through
 
 ## License
 MIT License — see LICENSE (planned). Feel free to fork and build.
@@ -108,4 +151,4 @@ MIT License — see LICENSE (planned). Feel free to fork and build.
 PRs welcome: open an issue with context, then submit a focused PR.
 
 ## Inspiration
-Aligned with the Ministry of Jal Shakti problem statement to equip Gram Panchayats with low-cost, digital O&M tooling for sustainable rural water supply.
+Aligned with the Ministry of Jal Shakti challenge to equip Gram Panchayats with low-cost, digital O&M tooling for sustainable rural water supply.
