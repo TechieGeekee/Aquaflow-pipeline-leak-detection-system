@@ -4,22 +4,28 @@
 
 ![Hero Placeholder](docs/images/hero-placeholder.png)
 
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-2.3-000000?logo=flask&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-RTDB-FFCA28?logo=firebase&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Status](https://img.shields.io/badge/Status-Prototype-blue)
+
 ---
 
 ## Table of Contents
-- Overview
-- Problem Statement
-- Highlights
-- Leak Detection Logic
-- Architecture
-- Data Model (Firebase)
-- Setup (Local)
-- Usage Guide
-- Operations Runbook
-- Roadmap
-- Screens & Media
-- License
-- Credits
+- [Overview](#overview)
+- [Problem Statement](#problem-statement-ministry-of-jal-shakti)
+- [Highlights](#highlights)
+- [Leak Detection Logic](#leak-detection-logic-segment-isolation)
+- [Architecture](#architecture)
+- [Data Model (Firebase)](#data-model-firebase-rtdb)
+- [Setup (Local)](#setup-local-windows)
+- [Usage Guide](#usage-guide)
+- [Operations Runbook](#operations-runbook)
+- [Roadmap](#roadmap)
+- [Screens & Media](#screens--media-placeholders)
+- [License](#license)
+- [Credits](#credits)
 
 ---
 
@@ -90,7 +96,7 @@ python -m venv .venv
 . .\.venv\Scripts\Activate.ps1
 
 # 3) Install deps (root + dashboard)
-
+pip install -r requirements.txt
 pip install -r water-monitoring-dashboard/requirements.txt
 
 # 4) Firebase key
