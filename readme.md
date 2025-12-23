@@ -99,8 +99,22 @@ python -m venv .venv
 pip install -r requirements.txt
 pip install -r water-monitoring-dashboard/requirements.txt
 
-# 4) Firebase key
-# Place serviceAccountKey.json at project root (already present) or set FIREBASE_DB_URL
+# 4) Firebase Setup
+# Add your Firebase service account credentials to serviceAccountKey.json files:
+#
+# A) Get your credentials:
+#    - Go to Firebase Console → Project Settings → Service Accounts
+#    - Click "Generate New Private Key" → JSON file downloads
+#
+# B) Update placeholder files with your credentials:
+#    - Copy the JSON contents from step A
+#    - Paste into: serviceAccountKey.json (at repo root)
+#    - Also paste into: water-monitoring-dashboard/serviceAccountKey.json
+#    - Placeholders show: YOUR_FIREBASE_PROJECT_ID, YOUR_PRIVATE_KEY, etc.
+#
+# C) Alternative (env var):
+#    - Set FIREBASE_DB_URL env var to your Realtime Database URL
+#    - (Optional; credentials file method is simpler)
 
 # 5) Run simulation (Tkinter)
 cd simulation
