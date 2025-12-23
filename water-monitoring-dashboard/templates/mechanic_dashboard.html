@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mechanic Dashboard - Water Monitoring System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #f8f9fa; }
+        .dashboard-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .leak-card { border-left: 5px solid #dc3545; }
+        .assigned-work { background-color: #fff3cd; }
+        .mechanic-info { background-color: #e7f3ff; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark dashboard-header">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-tools"></i> Mechanic Dashboard
+            </a>
+            <div class="navbar-text">
+                Welcome, <strong>{{ current_user.name }}</strong> (ID: {{ current_user.id }})
+            </div>
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-box-arrow-right"></i> Logout
+            </a>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- Mechanic Info -->
+            <div class="col-md-3">
+                <div class="card mechanic-info">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="bi bi-person-badge"></i> Your Information
+                        </h5>
+                        <p><strong>Name:</strong> {{ mechanic_details.name }}</p>
+                        <p><strong>Employee ID:</strong> {{ current_user.id }}</p>
+                        <p><strong>Specialization:</strong> {{ mechanic_details.specialization }}</p>
+                        <p><strong>Contact:</strong> {{ mechanic_details.phone }}</p>
+                        <hr>
+                        <h6>Assigned Work</h6>
+                        <div class="d-flex justify-content-between">
+                            <span>Total Assigned:</span>
+                            <span class="badge bg-primary">{{ assigned_leaks|length }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Pending:</span>
+                            <span class="badge bg-warning">
+                                {{ assigned_leaks|selectattr('acknowledged', 'equalto', false)|list|length }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assigned Leaks -->
+            <div class="col-md-9">
+                <div class="card">
+                    <div class="card-header bg-warning">
+                        <h5 class="mb-0">
+                            <i class="bi bi-exclamation-triangle"></i> Your Assigned Leaks
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if assigned_leaks %}
+                            <div class="row">
+                                {% for leak in assigned_leaks %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="card leak-card">
+                                        <div class="card-body">
+                                            <h6 class="card-title text-danger">
+                                                <i class="bi bi-droplet"></i> {{ leak.title }}
+                                            </h6>
+                                            <p class="card-text">{{ leak.message }}</p>
+                                            <p class="small text-muted">
+                                                <i class="bi bi-clock"></i> Detected: {{ leak.timestamp }}
+                                            </p>
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="badge bg-danger">High Priority</span>
+                                                {% if not leak.acknowledged %}
+                                                <button class="btn btn-sm btn-success acknowledge-btn" 
+                                                        data-leak-id="{{ leak.id }}">
+                                                    <i class="bi bi-check-circle"></i> Acknowledge
+                                                </button>
+                                                {% else %}
+                                                <span class="badge bg-success">
+                                                    <i class="bi bi-check-circle"></i> Acknowledged
+                                                </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                                <h4 class="mt-3">No Assigned Leaks</h4>
+                                <p class="text-muted">You currently have no leak assignments. Please standby.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Status Indicator -->
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">System Status</h6>
+                                <small class="text-muted">Last updated: <span id="last-update">--:--</span></small>
+                            </div>
+                            <div id="connection-status" class="text-warning">
+                                <i class="bi bi-circle-fill"></i> Connecting...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Acknowledge button handlers
+            document.querySelectorAll('.acknowledge-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const leakId = this.dataset.leakId;
+                    acknowledgeLeak(leakId, this);
+                });
+            });
+
+            // SSE connection for real-time updates
+            const eventSource = new EventSource('/stream');
+            
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'system_update' || data.type === 'leak_detected' || 
+                    data.type === 'new_assignment' || data.type === 'assignment_removed') {
+                    // Reload page to show updated assignments
+                    location.reload();
+                } else if (data.type === 'ping') {
+                    // Keep connection alive
+                    updateConnectionStatus('connected');
+                }
+            };
+
+            eventSource.onopen = function() {
+                updateConnectionStatus('connected');
+            };
+
+            eventSource.onerror = function() {
+                updateConnectionStatus('disconnected');
+            };
+
+            // Update connection status
+            function updateConnectionStatus(status) {
+                const statusEl = document.getElementById('connection-status');
+                const lastUpdateEl = document.getElementById('last-update');
+                
+                if (status === 'connected') {
+                    statusEl.innerHTML = '<i class="bi bi-circle-fill text-success"></i> Connected';
+                    lastUpdateEl.textContent = new Date().toLocaleTimeString();
+                } else {
+                    statusEl.innerHTML = '<i class="bi bi-circle-fill text-danger"></i> Disconnected';
+                }
+            }
+
+            // Acknowledge leak function
+            async function acknowledgeLeak(leakId, button) {
+                try {
+                    const response = await fetch('/api/alerts/acknowledge', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ alert_id: leakId })
+                    });
+
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        button.innerHTML = '<i class="bi bi-check-circle"></i> Acknowledged';
+                        button.classList.remove('btn-success');
+                        button.classList.add('btn-secondary');
+                        button.disabled = true;
+                        
+                        // Show success message
+                        showAlert('Leak acknowledged successfully!', 'success');
+                    } else {
+                        showAlert(result.message, 'danger');
+                    }
+                } catch (error) {
+                    showAlert('Error acknowledging leak', 'danger');
+                }
+            }
+
+            // Helper function to show alerts
+            function showAlert(message, type) {
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+                alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 1050;';
+                alertDiv.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.body.appendChild(alertDiv);
+                setTimeout(() => alertDiv.remove(), 5000);
+            }
+
+            // Initial connection check
+            updateConnectionStatus('connected');
+        });
+    </script>
+</body>
+</html>

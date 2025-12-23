@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AquaFlow Monitoring System | {% block title %}{% endblock %}</title>
+    
+    <!-- Futuristic Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/futuristic.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="futuristic-bg">
+    <!-- Glowing Particles Background -->
+    <div class="particles-container">
+        <div class="particles"></div>
+    </div>
+    
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-content">
+                <div class="logo-container">
+                    <div class="logo-icon">
+                        <i class="fas fa-water"></i>
+                    </div>
+                    <div class="logo-text">
+                        <h1 class="glitch-text" data-text="AQUAFLOW">AQUAFLOW</h1>
+                        <p class="subtitle">Intelligent Water Monitoring System</p>
+                    </div>
+                </div>
+                
+                <div class="header-info">
+                    <div class="system-status">
+                        <span class="status-indicator {% if firebase_connected %}online{% else %}offline{% endif %}">
+                            <i class="fas fa-circle"></i>
+                            {% if firebase_connected %}SYNC ONLINE{% else %}OFFLINE MODE{% endif %}
+                        </span>
+                    </div>
+                    
+                    <div class="user-menu">
+                        {% if current_user.is_authenticated %}
+                        <span class="user-greeting">Welcome, <span class="username">{{ current_user.id }}</span></span>
+                        <a href="{{ url_for('logout') }}" class="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash-message {{ category }}">
+                            <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-circle' if category == 'warning' else 'info-circle' if category == 'info' else 'times-circle' }}"></i>
+                            {{ message }}
+                            <button class="flash-close" onclick="this.parentElement.style.display='none'">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+        
+        <!-- Footer -->
+        <footer class="dashboard-footer">
+            <div class="footer-content">
+                <div class="footer-info">
+                    <p><i class="fas fa-satellite"></i> Last Update: <span id="last-update-time">{{ last_update }}</span></p>
+                    <p><i class="fas fa-shield-alt"></i> System Secured | Version 2.1.4</p>
+                </div>
+                <div class="footer-stats">
+                    <div class="stat">
+                        <i class="fas fa-database"></i>
+                        <span>Firebase: {% if firebase_connected %}CONNECTED{% else %}OFFLINE{% endif %}</span>
+                    </div>
+                    <div class="stat">
+                        <i class="fas fa-bolt"></i>
+                        <span>Real-time Monitoring: ACTIVE</span>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+    
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

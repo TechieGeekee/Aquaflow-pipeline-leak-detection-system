@@ -1,0 +1,537 @@
+<!-- Valve Status Component -->
+<div class="component valve-status-component">
+    <div class="component-header">
+        <h3><i class="fas fa-cogs"></i> Valve Control System</h3>
+        <div class="component-actions">
+            <button class="action-btn small" onclick="toggleAllValves()">
+                <i class="fas fa-power-off"></i> Toggle All
+            </button>
+            <button class="action-btn small" onclick="refreshValveStatus()">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
+    </div>
+    
+    <div class="valve-grid" id="valve-grid">
+        <!-- Dynamic content will be loaded here -->
+        {% for valve_name, status in valve_status.items() %}
+        <div class="valve-card" data-valve="{{ valve_name }}">
+            <div class="valve-card-header">
+                <div class="valve-icon {% if status == 'Open' %}open{% else %}closed{% endif %}">
+                    <i class="fas fa-{% if status == 'Open' %}toggle-on{% else %}toggle-off{% endif %}"></i>
+                </div>
+                <div class="valve-info">
+                    <h4>{{ valve_name }}</h4>
+                    <p class="valve-location">
+                        {% if 'Main Supply' in valve_name %}Primary Inlet
+                        {% elif 'Distribution' in valve_name %}Zone Controller
+                        {% else %}Secondary Control{% endif %}
+                    </p>
+                </div>
+            </div>
+            
+            <div class="valve-card-body">
+                <div class="valve-status-display">
+                    <div class="status-indicator {% if status == 'Open' %}active{% else %}inactive{% endif %}">
+                        <div class="indicator-dot"></div>
+                        <span class="status-text">{{ status|upper }}</span>
+                    </div>
+                    
+                    <div class="valve-metrics">
+                        <div class="metric">
+                            <span class="metric-label">Pressure:</span>
+                            <span class="metric-value">{% if status == 'Open' %}2.4{% else %}0.0{% endif %} bar</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Flow:</span>
+                            <span class="metric-value">{% if status == 'Open' %}5.2{% else %}0.0{% endif %} L/min</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="valve-controls">
+                    <div class="control-group">
+                        <span class="control-label">Manual Override:</span>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="toggle-{{ valve_name }}" 
+                                   class="toggle-input" {% if status == 'Open' %}checked{% endif %}
+                                   onchange="toggleValve('{{ valve_name }}')">
+                            <label for="toggle-{{ valve_name }}" class="toggle-label">
+                                <span class="toggle-handle"></span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="control-actions">
+                        <button class="action-btn small secondary" 
+                                onclick="calibrateValve('{{ valve_name }}')">
+                            <i class="fas fa-wrench"></i> Calibrate
+                        </button>
+                        <button class="action-btn small" 
+                                onclick="valveDiagnostics('{{ valve_name }}')">
+                            <i class="fas fa-stethoscope"></i> Test
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="valve-card-footer">
+                <div class="valve-history">
+                    <span class="history-label">Last Change:</span>
+                    <span class="history-value">{% if status == 'Open' %}2 hours ago{% else %}5 minutes ago{% endif %}</span>
+                </div>
+                <div class="valve-health">
+                    <span class="health-label">Health:</span>
+                    <div class="health-bar">
+                        <div class="health-fill" style="width: {% if status == 'Open' %}95{% else %}98{% endif %}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="valve-system-summary">
+        <div class="summary-item">
+            <div class="summary-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="summary-content">
+                <h5>System Integrity</h5>
+                <p>All valves operational and responding</p>
+            </div>
+        </div>
+        
+        <div class="summary-item">
+            <div class="summary-icon">
+                <i class="fas fa-tachometer-alt"></i>
+            </div>
+            <div class="summary-content">
+                <h5>Response Time</h5>
+                <p>< 500ms valve actuation</p>
+            </div>
+        </div>
+        
+        <div class="summary-item">
+            <div class="summary-icon">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <div class="summary-content">
+                <h5>Safety Status</h5>
+                <p>All safety protocols active</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.valve-status-component {
+    background: rgba(20, 30, 60, 0.9);
+    border-radius: 15px;
+    padding: 25px;
+    margin-bottom: 25px;
+    border: 1px solid rgba(64, 156, 255, 0.3);
+}
+
+.component-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(64, 156, 255, 0.2);
+}
+
+.component-header h3 {
+    color: white;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 20px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.component-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.valve-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.valve-card {
+    background: rgba(30, 40, 70, 0.8);
+    border-radius: 12px;
+    border: 1px solid rgba(64, 156, 255, 0.2);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.valve-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(64, 156, 255, 0.4);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.valve-card-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    background: rgba(40, 50, 80, 0.6);
+    border-bottom: 1px solid rgba(64, 156, 255, 0.1);
+}
+
+.valve-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+.valve-icon.open {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.1));
+    color: #4caf50;
+    border: 2px solid #4caf50;
+}
+
+.valve-icon.closed {
+    background: linear-gradient(135deg, rgba(244, 67, 54, 0.2), rgba(244, 67, 54, 0.1));
+    color: #f44336;
+    border: 2px solid #f44336;
+}
+
+.valve-info h4 {
+    color: white;
+    margin: 0 0 5px 0;
+    font-size: 16px;
+}
+
+.valve-location {
+    color: #8ab4f8;
+    font-size: 12px;
+    margin: 0;
+}
+
+.valve-card-body {
+    padding: 20px;
+}
+
+.valve-status-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.indicator-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+.status-indicator.active .indicator-dot {
+    background: #4caf50;
+    box-shadow: 0 0 10px #4caf50;
+}
+
+.status-indicator.inactive .indicator-dot {
+    background: #f44336;
+    box-shadow: 0 0 10px #f44336;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.status-text {
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.valve-metrics {
+    text-align: right;
+}
+
+.metric {
+    margin-bottom: 5px;
+}
+
+.metric-label {
+    color: #8ab4f8;
+    font-size: 11px;
+    display: block;
+}
+
+.metric-value {
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.valve-controls {
+    background: rgba(40, 50, 80, 0.6);
+    border-radius: 10px;
+    padding: 15px;
+}
+
+.control-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.control-label {
+    color: #8ab4f8;
+    font-size: 14px;
+}
+
+.toggle-switch {
+    position: relative;
+    width: 60px;
+    height: 30px;
+}
+
+.toggle-input {
+    display: none;
+}
+
+.toggle-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(244, 67, 54, 0.3);
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.toggle-input:checked + .toggle-label {
+    background: rgba(76, 175, 80, 0.3);
+}
+
+.toggle-handle {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 24px;
+    height: 24px;
+    background: white;
+    border-radius: 50%;
+    transition: all 0.3s;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-input:checked + .toggle-label .toggle-handle {
+    left: 33px;
+}
+
+.control-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.valve-card-footer {
+    padding: 15px 20px;
+    background: rgba(40, 50, 80, 0.6);
+    border-top: 1px solid rgba(64, 156, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.valve-history, .valve-health {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.history-label, .health-label {
+    color: #8ab4f8;
+    font-size: 12px;
+}
+
+.history-value {
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.health-bar {
+    width: 80px;
+    height: 6px;
+    background: rgba(64, 156, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.health-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4caf50, #8bc34a);
+    border-radius: 3px;
+}
+
+.valve-system-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(64, 156, 255, 0.2);
+}
+
+.summary-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background: rgba(40, 50, 80, 0.6);
+    border-radius: 10px;
+}
+
+.summary-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(79, 195, 247, 0.2);
+    border: 1px solid rgba(79, 195, 247, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4fc3f7;
+    font-size: 18px;
+}
+
+.summary-content h5 {
+    color: white;
+    margin: 0 0 5px 0;
+    font-size: 14px;
+}
+
+.summary-content p {
+    color: #8ab4f8;
+    margin: 0;
+    font-size: 12px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .valve-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .valve-system-summary {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+// Valve control functions
+function toggleAllValves() {
+    if (confirm('Toggle all valves? This will open closed valves and close open valves.')) {
+        showNotification('Toggling all valves...', 'warning');
+        // In real app, this would call an API
+        setTimeout(() => {
+            showNotification('All valves toggled successfully', 'success');
+            refreshDashboardData();
+        }, 2000);
+    }
+}
+
+function refreshValveStatus() {
+    showNotification('Refreshing valve status...', 'info');
+    refreshDashboardData();
+}
+
+function calibrateValve(valveName) {
+    if (confirm(`Calibrate ${valveName}? This will run a self-test and calibration routine.`)) {
+        showNotification(`Calibrating ${valveName}...`, 'info');
+        setTimeout(() => {
+            showNotification(`${valveName} calibration complete`, 'success');
+        }, 3000);
+    }
+}
+
+function valveDiagnostics(valveName) {
+    showNotification(`Running diagnostics on ${valveName}...`, 'info');
+    setTimeout(() => {
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-stethoscope"></i> Valve Diagnostics: ${valveName}</h3>
+                    <button class="modal-close" onclick="this.closest('.modal').remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="diagnostics-results">
+                        <div class="result-item">
+                            <span class="result-label">Actuator Response:</span>
+                            <span class="result-value good">✓ 450ms</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Seal Integrity:</span>
+                            <span class="result-value good">✓ 100%</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Position Accuracy:</span>
+                            <span class="result-value good">✓ ±0.5°</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Motor Temperature:</span>
+                            <span class="result-value good">✓ 42°C</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Communication:</span>
+                            <span class="result-value good">✓ Stable</span>
+                        </div>
+                    </div>
+                    <div class="diagnostics-summary">
+                        <p><strong>Overall Status:</strong> <span class="good">EXCELLENT</span></p>
+                        <p>All diagnostic tests passed. Valve is operating within optimal parameters.</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">
+                        Close
+                    </button>
+                    <button class="btn btn-primary" onclick="generateValveReport('${valveName}'); this.closest('.modal').remove()">
+                        <i class="fas fa-file-pdf"></i> Generate Report
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        modal.style.display = 'flex';
+    }, 1500);
+}
+
+function generateValveReport(valveName) {
+    showNotification(`Generating diagnostic report for ${valveName}...`, 'info');
+    setTimeout(() => {
+        showNotification(`Report for ${valveName} generated successfully`, 'success');
+    }, 2000);
+}
+</script>
