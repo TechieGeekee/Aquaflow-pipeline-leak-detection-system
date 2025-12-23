@@ -1,4 +1,0 @@
-{
-  "instructions": "Place your serviceAccountKey.json file in this folder",
-  "databaseURL": "https://your-project-id.firebaseio.com/"
-}
