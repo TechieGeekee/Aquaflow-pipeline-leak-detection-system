@@ -767,9 +767,13 @@ class WaterSystemGUI:
             # Check for service account key
             service_account_paths = [
                 'serviceAccountKey.json',
+                '../serviceAccountKey.json',
+                '../serviceAccountKey11.json',
                 'firebase-key.json',
                 'key.json',
-                './config/serviceAccountKey.json'
+                './config/serviceAccountKey.json',
+                os.path.join(os.path.dirname(__file__), '..', 'serviceAccountKey.json'),
+                os.path.join(os.path.dirname(__file__), '..', 'serviceAccountKey11.json')
             ]
             
             service_account_path = None
