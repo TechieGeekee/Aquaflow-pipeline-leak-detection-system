@@ -99,22 +99,74 @@ python -m venv .venv
 pip install -r requirements.txt
 pip install -r water-monitoring-dashboard/requirements.txt
 
-# 4) Firebase Setup
-# Add your Firebase service account credentials to serviceAccountKey.json files:
+# 4) Firebase Setup - REQUIRED FOR BOTH APPS
+# Both simulation and dashboard need Firebase credentials to sync data.
+# Follow these detailed steps to add your own Firebase project credentials.
 #
-# A) Get your credentials:
-#    - Go to Firebase Console → Project Settings → Service Accounts
-#    - Click "Generate New Private Key" → JSON file downloads
+# ─── STEP A: Create a Firebase Project (if you don't have one) ───
+# 1. Go to https://console.firebase.google.com
+# 2. Click "Add project" → enter project name → Create
+# 3. Enable Realtime Database:
+#    - In left menu, click "Realtime Database"
+#    - Click "Create Database" → US region → Test mode → Create
+# 4. Note the database URL (looks like: https://PROJECT-ID-default-rtdb.firebaseio.com)
 #
-# B) Update placeholder files with your credentials:
-#    - Copy the JSON contents from step A
-#    - Paste into: serviceAccountKey.json (at repo root)
-#    - Also paste into: water-monitoring-dashboard/serviceAccountKey.json
-#    - Placeholders show: YOUR_FIREBASE_PROJECT_ID, YOUR_PRIVATE_KEY, etc.
+# ─── STEP B: Generate Service Account Key ───
+# 1. In Firebase Console, top-left menu → "Project Settings"
+# 2. Click "Service Accounts" tab
+# 3. Under "Firebase Admin SDK" section, click "Generate New Private Key"
+# 4. JSON file downloads (contains all credentials needed)
 #
-# C) Alternative (env var):
-#    - Set FIREBASE_DB_URL env var to your Realtime Database URL
-#    - (Optional; credentials file method is simpler)
+# ─── STEP C: Copy Key Values into Placeholder Files ───
+# The downloaded JSON file contains these fields you'll need:
+#   - "type": "service_account"
+#   - "project_id": YOUR_PROJECT_ID
+#   - "private_key_id": YOUR_KEY_ID
+#   - "private_key": YOUR_LONG_PRIVATE_KEY (multiline, starts with -----BEGIN...)
+#   - "client_email": firebase-adminsdk-XXXXX@PROJECT_ID.iam.gserviceaccount.com
+#   - "client_id": YOUR_CLIENT_ID
+#   - "auth_uri": https://accounts.google.com/o/oauth2/auth
+#   - "token_uri": https://oauth2.googleapis.com/token
+#   - "auth_provider_x509_cert_url": https://www.googleapis.com/oauth2/v1/certs
+#   - "client_x509_cert_url": YOUR_CERT_URL
+#   - "universe_domain": googleapis.com
+#
+# ─── STEP D: Update Placeholder Files ───
+# Option 1 (RECOMMENDED): Copy entire JSON
+#   1. Open downloaded JSON file with text editor
+#   2. Copy ALL contents (Ctrl+A, Ctrl+C)
+#   3. Open: serviceAccountKey.json (at repo root)
+#   4. Paste (replace all placeholder text): Ctrl+A, Ctrl+V
+#   5. Save file
+#   6. Repeat steps 3-5 for: water-monitoring-dashboard/serviceAccountKey.json
+#
+# Option 2 (Manual): Replace individual placeholder values
+#   1. Open downloaded JSON file
+#   2. Open: serviceAccountKey.json (at repo root)
+#   3. Find and replace each YOUR_* placeholder:
+#      - Replace YOUR_FIREBASE_PROJECT_ID with "project_id" value from downloaded JSON
+#      - Replace YOUR_PRIVATE_KEY_ID with "private_key_id" value
+#      - Replace YOUR_PRIVATE_KEY with full "private_key" value (keep the quotes and \\n)
+#      - Replace YOUR_CLIENT_EMAIL with "client_email" value
+#      - Replace YOUR_CLIENT_ID with "client_id" value
+#      - Replace YOUR_CERT_URL with "client_x509_cert_url" value
+#   4. Save file
+#   5. Repeat for: water-monitoring-dashboard/serviceAccountKey.json
+#
+# ─── File Locations (both must be updated) ───
+#   serviceAccountKey.json               ← at repo root, for simulation
+#   water-monitoring-dashboard/serviceAccountKey.json  ← for dashboard
+#
+# ─── Verify Setup ───
+# After updating files, both apps will:
+#   - Load credentials automatically on startup
+#   - Output: "Firebase initialized successfully"
+#   - Begin syncing with your Firebase Realtime Database
+#
+# ─── Alternative: Environment Variable (Optional) ───
+# If you prefer not to use files, set:
+#   $env:FIREBASE_DB_URL = "https://YOUR-PROJECT-default-rtdb.firebaseio.com"
+# Note: Key files method is simpler and recommended for local development
 
 # 5) Run simulation (Tkinter)
 cd simulation
@@ -134,6 +186,62 @@ python app.py
 ### Logins
 - Admin: `admin` / `WaterMonitor2024!`
 - Mechanics: `M001`/`mechanic001`, `M002`/`mechanic002`, `M003`/`mechanic003`
+
+## Firebase Configuration Guide
+
+### Finding Your Firebase Credentials
+
+Once you've generated a service account key from Firebase Console, here's what each field maps to:
+
+| Placeholder | Location in Downloaded JSON | Example |
+|-------------|---------------------------|---------|
+| `YOUR_FIREBASE_PROJECT_ID` | `project_id` | `"myproject-12345"` |
+| `YOUR_PRIVATE_KEY_ID` | `private_key_id` | `"abc123def456..."` |
+| `YOUR_PRIVATE_KEY` | `private_key` | `"-----BEGIN PRIVATE KEY-----\nMIIEvQ..."` |
+| `YOUR_CLIENT_EMAIL` | `client_email` | `"firebase-adminsdk-fbsvc@myproject.iam.gserviceaccount.com"` |
+| `YOUR_CLIENT_ID` | `client_id` | `"123456789012345678"` |
+| `YOUR_CERT_URL` | `client_x509_cert_url` | `"https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk..."` |
+
+### Checking Credentials Are Loaded
+
+After updating the credential files, run:
+```powershell
+. .\.venv\Scripts\Activate.ps1
+cd simulation
+python -c "from firebase_config import initialize_firebase; print('✓ Firebase ready')"
+```
+
+Expected output:
+```
+Found service account key: ../serviceAccountKey.json
+Firebase initialized successfully
+✓ Firebase ready
+```
+
+### Troubleshooting Firebase Issues
+
+**Problem**: "serviceAccountKey.json not found"
+- **Solution**: Ensure file exists at repo root AND in `water-monitoring-dashboard/` folder (both required)
+
+**Problem**: "Invalid JSON in serviceAccountKey.json"
+- **Solution**: Check that the entire JSON is valid (use https://jsonlint.com to validate)
+
+**Problem**: "Firebase: Permission denied"
+- **Solution**: Your database rules may be too restrictive. In Firebase Console:
+  - Go to "Realtime Database" → "Rules"
+  - Set to test mode (allows all reads/writes) for development:
+    ```json
+    {
+      "rules": {
+        ".read": true,
+        ".write": true
+      }
+    }
+    ```
+  - For production, implement proper security rules
+
+**Problem**: "Simula only runs in mock Firebase mode"
+- **Solution**: Credentials are invalid or missing. Check console output for "Found service account key"
 
 ## Usage Guide
 1) Launch Tkinter simulation → adjust valves, taps, water level; add/remove leaks on pipes.
