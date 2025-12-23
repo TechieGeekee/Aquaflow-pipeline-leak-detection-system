@@ -2,7 +2,7 @@
 
 > Empowering Gram Panchayats with low-cost, real-time leak detection and water quality monitoring tools. (Problem Statement ID: 25241, Ministry of Jal Shakti)
 
-![Hero Placeholder](docs/images/hero-placeholder.png)
+![Hero Placeholder](docs/images/img1.png)
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-2.3-000000?logo=flask&logoColor=white)
